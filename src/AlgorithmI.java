@@ -9,5 +9,5 @@
  * @author villiam
  */
 public interface AlgorithmI {
-    public int score(Command to, Command where);    
+    public int score(Elevator elevator, Command cmd);    
 }

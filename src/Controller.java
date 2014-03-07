@@ -5,7 +5,6 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,8 +20,7 @@ import java.util.logging.Logger;
  */
 public class Controller {
 
-    private static ConcurrentLinkedQueue<ResponseObject> rq = new ConcurrentLinkedQueue<ResponseObject>();
-    private static ConcurrentLinkedQueue<Command> requests = new ConcurrentLinkedQueue<Command>();
+    private static ConcurrentLinkedQueue<ResponseObject> response = new ConcurrentLinkedQueue<ResponseObject>();
     private Elevator[] elevators;
     private AlgorithmI alg;
 
@@ -49,8 +47,7 @@ public class Controller {
                     cmd = requests.poll();
                     switch (cmd.command) {
                         case b:
-                            buttonPressed(pw, cmd);
-                            break;
+                            buttonPressed(pw, cmd); break;
                     }
                 }
 
@@ -87,20 +84,43 @@ public class Controller {
         return ret;
     }
 
+
     public void buttonPressed(PrintWriter pw, Command cmd) throws IOException {
         pw.println(Command.Commands.v.toString());
         pw.flush();
+        Command[] cmdArr;
         Command v = findCommand(Command.Commands.v);
         for (int i = 0; i < elevators.length; i++) {
             pw.println(Command.Commands.w.toString() + " " + i);
             pw.flush();
-            elevators[i].addCommand(v);
-            elevators[i].addCommand(findCommand(Command.Commands.w));
+            cmdArr = new Command[3];
+            cmdArr[0] = v;
+            cmdArr[1] = findCommand(Command.Commands.w);
+            cmdArr[2] = cmd;
+            elevators[i].addCommands(cmdArr);
         }
+        
+        while(response.size() < elevators.length);
+        
+        int bestScore = Integer.MAX_VALUE;
+        int bestId = -1;
+        for(ResponseObject<Integer> r: response){
+            if(r.response < bestScore) {
+                bestScore = r.response;
+                bestId = r.id;
+            }
+        }
+        int direction;
+        if(elevators[bestId].getFloor() < cmd.args[0])
+            direction = 1;
+        else
+            direction = -1;
+        
+        pw.println(Command.Commands.m.toString() + " " + bestId + " " + direction);
     }
 
     public static void addResponse(ResponseObject ro) {
-        rq.add(ro);
+        response.add(ro);
     }
 
     public static void main(String[] args) {
@@ -125,9 +145,15 @@ public class Controller {
             try {
                 BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
                 String msg;
+                Command cmd;
                 System.out.println("Reader started");
                 while ((msg = br.readLine()) != null) {
-                    requests.add(new Command(msg));
+                    cmd = new Command(msg);
+                    switch(cmd.command){
+                        case f:
+                            elevators[cmd.args[0]].getFloor().setPosition(cmd.position);
+                            break;
+                    }
                 }
                 System.out.println("Reader finished");
                 
