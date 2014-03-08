@@ -23,108 +23,47 @@ public class Controller {
     private static ConcurrentLinkedQueue<ResponseObject> response = new ConcurrentLinkedQueue<ResponseObject>();
     private Elevator[] elevators;
     private AlgorithmI alg;
-
+    Communicator communicator;
+    
     public Controller(AlgorithmI alg) {
         this.alg = alg;
+        
     }
 
     public void runElevator(String hostName, int port, int numElevators) {
         elevators = new Elevator[numElevators];
-        for (int i = 0; i < numElevators; i++) {
-            elevators[i] = new Elevator(i);
-            new Thread(elevators[i]).start();
-        }
-        Socket s = null;
-        try {
-            s = new Socket(hostName, port);
-            String cmdStr;
-            Command cmd;
-            Reader r = new Reader(s);
-            r.start();
-            PrintWriter pw = new PrintWriter(s.getOutputStream());
-            while (true) {
-                if (requests.size() > 0) {
-                    cmd = requests.poll();
-                    switch (cmd.command) {
-                        case b:
-                            buttonPressed(pw, cmd); break;
-                    }
-                }
 
+        try {
+            communicator = new Communicator(hostName,port);
+            for (int i = 0; i < numElevators; i++) {
+                elevators[i] = new Elevator(i, communicator);
+                new Thread(elevators[i]).start();
             }
-//            pw.println("m 0 1");
-//            pw.flush();
+            Reader reader = new Reader(communicator);
+            reader.start();
+    
         } catch (IOException ex) {
             Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            try {
-                s.close();
-            } catch (IOException ex) {
-                Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-    }
-    private Command findCommand(Command.Commands toFind){
-        boolean found = false;
-        Iterator<Command> it;
-        Command ret =null,tmp;
-        while(!found){
-            it = requests.iterator();
-            while(it.hasNext())
-            {
-                tmp = it.next();
-                if(tmp.command == toFind){
-                    ret = tmp;
-                    found = true;
-                    it.remove();
-                    break;
-                }
-            }
-        }
-        return ret;
+        } 
     }
 
 
-    public void buttonPressed(PrintWriter pw, Command cmd) throws IOException {
-        pw.println(Command.Commands.v.toString());
-        pw.flush();
-        Command[] cmdArr;
-        Command v = findCommand(Command.Commands.v);
-        for (int i = 0; i < elevators.length; i++) {
-            pw.println(Command.Commands.w.toString() + " " + i);
-            pw.flush();
-            cmdArr = new Command[3];
-            cmdArr[0] = v;
-            cmdArr[1] = findCommand(Command.Commands.w);
-            cmdArr[2] = cmd;
-            elevators[i].addCommands(cmdArr);
-        }
-        
-        while(response.size() < elevators.length);
-        
+    public void buttonPressed(Command cmd) throws IOException {
         int bestScore = Integer.MAX_VALUE;
-        int bestId = -1;
-        for(ResponseObject<Integer> r: response){
-            if(r.response < bestScore) {
-                bestScore = r.response;
-                bestId = r.id;
+        int bestId=0, curr;
+        for (int i = 0; i < elevators.length; i++) {
+            curr = alg.score(elevators[i], cmd);
+            if ( curr < bestScore) {
+                curr = bestScore;
+                bestId = i;
             }
         }
-        int direction;
-        if(elevators[bestId].getFloor() < cmd.args[0])
-            direction = 1;
-        else
-            direction = -1;
         
-        pw.println(Command.Commands.m.toString() + " " + bestId + " " + direction);
-    }
-
-    public static void addResponse(ResponseObject ro) {
-        response.add(ro);
+        elevators[bestId].addToPath(cmd.args[0]);
     }
 
     public static void main(String[] args) {
-        String hostName = args.length > 0 ? args[0] : "localhost";
+        String hostName = args.length > 0 ? args[0] : "83.191.83.108";
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 4711;
         int numElevators = args.length > 2 ? Integer.parseInt(args[2]) : 1;
         Controller c = new Controller(new SSTAlgorithm());
@@ -133,25 +72,29 @@ public class Controller {
     }
 
     private class Reader extends Thread {
+        
+        private Communicator communicator;
 
-        private Socket s;
-
-        public Reader(Socket s) {
-            this.s = s;
+        public Reader(Communicator c) {
+            this.communicator = c;
         }
 
         @Override
         public void run() {
             try {
-                BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
+                BufferedReader br = communicator.getBufferedReader();
                 String msg;
                 Command cmd;
                 System.out.println("Reader started");
                 while ((msg = br.readLine()) != null) {
+                    System.out.println(msg);
                     cmd = new Command(msg);
                     switch(cmd.command){
                         case f:
-                            elevators[cmd.args[0]].getFloor().setPosition(cmd.position);
+                            elevators[cmd.args[0] - 1].getFloor().setPosition(cmd.position);
+                            break;
+                        case b:
+                            buttonPressed(cmd);
                             break;
                     }
                 }

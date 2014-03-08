@@ -32,8 +32,28 @@ public class Communicator {
     public synchronized BufferedReader getBufferedReader(){
         return this.br;
     }
-    public synchronized void sendMove(int elevatorId, int direction){
+    public synchronized void move(int elevatorId, int direction){
         pw.println("m " + elevatorId + " " + direction);
+        pw.flush();
+    }
+    public synchronized void openDoor(int elevatorId){
+        pw.println("d " + elevatorId + " " + 1);
+        pw.flush();
+    }
+    public synchronized void closeDoor(int elevatorId){
+        pw.println("d " + elevatorId + " " + -1);
+        pw.flush();
+    }
+    public synchronized void setScale(int elevatorId,int scale){
+        pw.println("s "  + elevatorId + " " + scale);
+        pw.flush();
+    }
+    public synchronized void quit(){
+        pw.println("q");
+        pw.flush();
+    }
+    public synchronized void printCommand(String s){
+        pw.println(s);
         pw.flush();
     }
     

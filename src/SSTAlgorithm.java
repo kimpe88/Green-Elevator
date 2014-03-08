@@ -12,8 +12,7 @@ public class SSTAlgorithm implements AlgorithmI{
 
     @Override
     public int score(Elevator elevator, Command cmd)    {
-//        return Math.abs(elevator.getFloor() - cmd.args[0]);
-        return -111111111;
+        return Math.abs(elevator.getFloor().getCurrentFloorNumber() - cmd.args[0]);
     }
     
 }
