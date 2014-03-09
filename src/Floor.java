@@ -16,7 +16,7 @@ public class Floor {
     }
     
     public int getCurrentFloorNumber() {
-        return (int)position.get();
+        return Math.round(position.get());
     }
     
     public boolean atFloor(int floorNumber) {

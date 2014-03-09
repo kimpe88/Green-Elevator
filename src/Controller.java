@@ -1,10 +1,6 @@
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
-import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -37,7 +33,7 @@ public class Controller {
             communicator = new Communicator(hostName,port);
             for (int i = 0; i < numElevators; i++) {
                 elevators[i] = new Elevator(i, communicator);
-                new Thread(elevators[i]).start();
+                elevators[i].start();
             }
             Reader reader = new Reader(communicator);
             reader.start();
@@ -47,8 +43,17 @@ public class Controller {
         } 
     }
 
+    private void floorButtonPressed(Command cmd) {
+        if(cmd.command == Command.Commands.p && cmd.args[1] == 32000) {
 
-    public void buttonPressed(Command cmd) throws IOException {
+            if (elevators[cmd.args[0] - 1].isEmergencyStopped())
+                elevators[cmd.args[0] - 1].setEmergencyStopped(false);
+            else
+                elevators[cmd.args[0] - 1].setEmergencyStopped(true);
+        } else
+            elevators[cmd.args[0] - 1].addToPath(cmd.args[1]);
+    }
+    private void callElevatorButtonPressed(Command cmd) throws IOException {
         int bestScore = Integer.MAX_VALUE;
         int bestId=0, curr;
         for (int i = 0; i < elevators.length; i++) {
@@ -94,7 +99,10 @@ public class Controller {
                             elevators[cmd.args[0] - 1].getFloor().setPosition(cmd.position);
                             break;
                         case b:
-                            buttonPressed(cmd);
+                            callElevatorButtonPressed(cmd);
+                            break;
+                        case p:
+                            floorButtonPressed(cmd);
                             break;
                     }
                 }

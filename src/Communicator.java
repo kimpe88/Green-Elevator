@@ -17,8 +17,6 @@ import java.net.Socket;
  */
 public class Communicator {
     
-    public static final int DIRECTION_UP = 1, DIRECTION_DOWN = -1, DIRECTION_STOP = 0;
-    
     Socket s;
     BufferedReader br;
     PrintWriter pw;
