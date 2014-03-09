@@ -60,7 +60,7 @@ public class Elevator implements Runnable {
                 add(pathDown,-stop);
             }
         } else {
-            if (floor.getCurrentFloorNumber() > stop) {
+            if (floor.getCurrentFloorNumber() < stop) {
                 direction = UP;
                 add(pathUp, stop);
             } else {

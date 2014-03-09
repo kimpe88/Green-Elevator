@@ -54,7 +54,7 @@ public class Controller {
         for (int i = 0; i < elevators.length; i++) {
             curr = alg.score(elevators[i], cmd);
             if ( curr < bestScore) {
-                curr = bestScore;
+                bestScore = curr;
                 bestId = i;
             }
         }
@@ -63,7 +63,7 @@ public class Controller {
     }
 
     public static void main(String[] args) {
-        String hostName = args.length > 0 ? args[0] : "83.191.83.108";
+        String hostName = args.length > 0 ? args[0] : "localhost";
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 4711;
         int numElevators = args.length > 2 ? Integer.parseInt(args[2]) : 1;
         Controller c = new Controller(new SSTAlgorithm());
