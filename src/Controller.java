@@ -31,7 +31,7 @@ public class Controller {
 
         try {
             communicator = new Communicator(hostName,port);
-            for (int i = 0; i < numElevators; i++) {
+            for (int i = 1; i < numElevators; i++) {
                 elevators[i] = new Elevator(i, communicator);
                 elevators[i].start();
             }
@@ -46,18 +46,19 @@ public class Controller {
     private void floorButtonPressed(Command cmd) {
         if(cmd.command == Command.Commands.p && cmd.args[1] == 32000) {
 
-            if (elevators[cmd.args[0] - 1].isEmergencyStopped())
-                elevators[cmd.args[0] - 1].setEmergencyStopped(false);
+            if (elevators[cmd.args[0]].isEmergencyStopped())
+                elevators[cmd.args[0]].setEmergencyStopped(false);
             else
-                elevators[cmd.args[0] - 1].setEmergencyStopped(true);
+                elevators[cmd.args[0]].setEmergencyStopped(true);
         } else
-            elevators[cmd.args[0] - 1].addToPath(cmd.args[1]);
+            elevators[cmd.args[0]].addToPath(cmd.args[1]);
     }
     private void callElevatorButtonPressed(Command cmd) throws IOException {
-        int bestScore = Integer.MAX_VALUE;
-        int bestId=0, curr;
-        for (int i = 0; i < elevators.length; i++) {
-            curr = alg.score(elevators[i], cmd);
+        float bestScore = Integer.MAX_VALUE;
+        int bestId=0;
+        float curr;
+        for (int i = 1; i < elevators.length; i++) {
+            curr = elevators[i].score(cmd);
             if ( curr < bestScore) {
                 bestScore = curr;
                 bestId = i;
@@ -67,10 +68,12 @@ public class Controller {
         elevators[bestId].addToPath(cmd.args[0]);
     }
 
+
     public static void main(String[] args) {
         String hostName = args.length > 0 ? args[0] : "localhost";
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 4711;
-        int numElevators = args.length > 2 ? Integer.parseInt(args[2]) : 1;
+        int numElevators = args.length > 2 ? Integer.parseInt(args[2]) : 2;
+        numElevators++;
         Controller c = new Controller(new SSTAlgorithm());
         c.runElevator(hostName, port, numElevators);
 
@@ -92,11 +95,10 @@ public class Controller {
                 Command cmd;
                 System.out.println("Reader started");
                 while ((msg = br.readLine()) != null) {
-                    System.out.println(msg);
                     cmd = new Command(msg);
                     switch(cmd.command){
                         case f:
-                            elevators[cmd.args[0] - 1].getFloor().setPosition(cmd.position);
+                            elevators[cmd.args[0]].getFloor().setPosition(cmd.position);
                             break;
                         case b:
                             callElevatorButtonPressed(cmd);

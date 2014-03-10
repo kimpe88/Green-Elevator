@@ -2,6 +2,7 @@
 import java.util.Queue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -14,73 +15,72 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class Elevator extends Thread {
 
-    private int id, direction;
+    private int id;
     private PriorityBlockingQueue<Integer> pathUp;
     private PriorityBlockingQueue<Integer> pathDown;
     private PriorityBlockingQueue<Integer> currentPath;
     private Floor floor;
     private AtomicBoolean emergencyStopped;
-    private boolean firstTimeCheckingEmergency = true,emergencyReset = false;
+    private boolean firstTimeCheckingEmergency = true, emergencyReset = false;
     private Communicator com;
+    private AtomicInteger direction;
+    private static final int WRONG_DIRECTION = 2;
 
-
-    public Elevator(int elevatorID,Communicator com) {
+    public Elevator(int elevatorID, Communicator com) {
         this.id = elevatorID;
         this.pathUp = new PriorityBlockingQueue<>();
         this.pathDown = new PriorityBlockingQueue<>();
-        this.direction = Const.DIRECTION_STOP;
+        this.direction = new AtomicInteger(Const.DIRECTION_STOP);
         this.currentPath = pathUp;
         this.com = com;
         this.floor = new Floor();
         this.emergencyStopped = new AtomicBoolean(false);
     }
 
-    private void add(Queue<Integer> q, int value)  {
-        if(!q.contains(value))
+    private void add(Queue<Integer> q, int value) {
+        if (!q.contains(value)) {
             q.add(value);
+        }
     }
-    private void printQueue() {
-        System.out.print("Printing queue");
-        for (Integer i : currentPath)
-            System.out.print(i + " ");
-        System.out.println();
+
+    private String queueToString() {
+        StringBuilder sb = new StringBuilder();
+        for (Integer i : currentPath) {
+            sb.append(i).append(" ");
+        }
+        sb.append("\n");
+        return sb.toString();
     }
 
     //TODO If button is pressed when halfway to a floor it gets added to other queue should incorporate half floors
     public void addToPath(int stop) {
         float stopAsFloat = (float) stop;
-        System.out.println("Adding stop to path " + stop + " currenct direction " + direction );
-        System.out.println("Adding stop to path " + " currenct direction " + direction );
-        if (stop == Const.EMERGENCY_STOP) {
-            System.out.println("EMERGENCY STOP PRESSED");
-            Thread.currentThread().interrupt();
-
-        } else if (direction == Const.DIRECTION_UP) {
-            if (floor.getCurrentFloorNumberAsFloat()< stopAsFloat) {
-                add(pathUp,stop);
+        System.out.println("Adding stop to path " + stop + " currenct direction " + direction);
+        if (direction.get() == Const.DIRECTION_UP) {
+            if (floor.getCurrentFloorNumberAsFloat() < stopAsFloat) {
+                add(pathUp, stop);
             } else {
-                add(pathDown,-stop);
+                add(pathDown, -stop);
             }
-        } else if (direction == Const.DIRECTION_DOWN) {
+        } else if (direction.get() == Const.DIRECTION_DOWN) {
             if (floor.getCurrentFloorNumberAsFloat() > stopAsFloat) {
-                add(pathDown,-stop);
+                add(pathDown, -stop);
             } else {
                 add(pathUp, stop);
             }
         } else {
             if (floor.getCurrentFloorNumberAsFloat() < stopAsFloat) {
-                direction = Const.DIRECTION_UP;
+                direction.set(Const.DIRECTION_UP);
                 add(pathUp, stop);
             } else {
-                direction = Const.DIRECTION_DOWN;
-                add(pathDown,-stop);
+                direction.set(Const.DIRECTION_DOWN);
+                add(pathDown, -stop);
             }
         }
-        printQueue();
     }
 
     public int getDirection() {
-        return direction;
+        return direction.get();
     }
 
     public Floor getFloor() {
@@ -88,29 +88,32 @@ public class Elevator extends Thread {
     }
 
     private void switchDirectionPath() {
-        if(currentPath == pathUp) {
+        if (currentPath == pathUp) {
             currentPath = pathDown;
-            direction = Const.DIRECTION_DOWN;
+            direction.set(Const.DIRECTION_DOWN);
         } else {
             currentPath = pathUp;
-            direction = Const.DIRECTION_UP;
+            direction.set(Const.DIRECTION_UP);
         }
     }
 
-    private void stopAtFloor() throws InterruptedException{
-        com.move(id,Const.DIRECTION_STOP);
+    private void stopAtFloor() throws InterruptedException {
+        com.move(id, Const.DIRECTION_STOP);
         com.openDoor(id);
         Thread.sleep(1000);
         com.closeDoor(id);
         Thread.sleep(500);
-        direction = Const.DIRECTION_STOP;
+        if (pathUp.size() == 0 && pathDown.size() == 0)
+            direction.set(Const.DIRECTION_STOP);
     }
+
     private void calcAndSetDirection() {
         int nextFloor = getNextFloor();
-        if(floor.getCurrentFloorNumber() < nextFloor)
-            direction = Const.DIRECTION_UP;
-        else
-            direction = Const.DIRECTION_DOWN;
+        if (floor.getCurrentFloorNumber() < nextFloor) {
+            direction.set(Const.DIRECTION_UP);
+        } else {
+            direction.set(Const.DIRECTION_DOWN);
+        }
         System.out.println("Direction " + direction);
     }
 
@@ -118,42 +121,40 @@ public class Elevator extends Thread {
         return Math.abs(currentPath.peek());
     }
     /*ToDo
-       We assume that no elevator can pass a floor just as it is added to the list
-    */
+     We assume that no elevator can pass a floor just as it is added to the list
+     */
+
     @Override
     public void run() {
-        int currentFloor = 0,oldFloor = 0;
+        int currentFloor = 0, oldFloor = 0;
 
         while (true) {
             try {
-                while(pathUp.size() == 0 && pathDown.size() == 0);
+                while (pathUp.size() == 0 && pathDown.size() == 0);
                 if (currentPath.size() > 0) {
                     calcAndSetDirection();
-                    com.move(id, direction);
+                    com.move(id, direction.get());
                     do {
-                        while (isEmergencyStopped()) {
-                            if(firstTimeCheckingEmergency){
+                        synchronized (this) {
+                            if (isEmergencyStopped()) {
                                 com.move(id, Const.DIRECTION_STOP);
-                                firstTimeCheckingEmergency = false;
+                                wait();
+                                com.move(id, direction.get());
                             }
-                            Thread.yield();
                         }
-                        if(emergencyReset) {
-                            com.move(id, direction);
-                            emergencyReset = false;
-                        }
-
                         oldFloor = currentFloor;
                         currentFloor = floor.getCurrentFloorNumber();
                         // Update scale if we are at a new floor
-                        if (oldFloor != currentFloor)
+                        if (oldFloor != currentFloor) {
                             com.setScale(id, currentFloor);
-                    }while(!floor.atFloor(getNextFloor()));
+                        }
+                    } while (!floor.atFloor(getNextFloor()));
                     // TODO check here so we haven't past the floor already?
                     currentPath.remove();
                     stopAtFloor();
-                } else
+                } else {
                     switchDirectionPath();
+                }
             } catch (InterruptedException e) {
                 System.out.println("Interrupted");
             }
@@ -172,9 +173,85 @@ public class Elevator extends Thread {
         return emergencyStopped.get();
     }
 
-    public void setEmergencyStopped(boolean value) {
-        if(!this.emergencyStopped.get())
-            emergencyReset = true;
+    public synchronized void setEmergencyStopped(boolean value) {
         this.emergencyStopped.set(value);
+        if (value == false) {
+            notify();
+        }
     }
+
+    private int sumScore(int[] arr, float lowerLimit, float upperLimit) {
+        int score = 0;
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i] < upperLimit && arr[i] > lowerLimit) {
+                score += 1;
+                arr[i] = -1;
+            }
+        }
+        return score;
+    }
+
+    private static int[] deepCopyQueue(Queue<Integer> q) {
+        int[] arr = new int[q.size()];
+        int i = 0;
+        for (Integer val : q) {
+            arr[i] = Math.abs(val);
+            i++;
+        }
+        return arr;
+    }
+
+    public float score(Command cmd) {
+        
+        float currFloorNumber = floor.getCurrentFloorNumberAsFloat();
+        float score =  Math.abs( currFloorNumber- (float)cmd.args[0]);
+        System.out.println("Elevator " + id + " has command, to floor: " + cmd.args[0] + " ,direction: " + cmd.args[1]);
+        System.out.println("Elevator " + id + " has initial score " + score);
+        System.out.println("Elevator " + id + " has queue " + queueToString());
+        int[] upArr = deepCopyQueue(pathUp);
+        int[] downArr = deepCopyQueue(pathDown);
+        int savedDirection = direction.get();
+
+        int directionToFloor;
+        float position = floor.getCurrentFloorNumberAsFloat();
+        if (position > cmd.args[0]) {
+            directionToFloor = Const.DIRECTION_DOWN;
+        } else {
+            directionToFloor = Const.DIRECTION_UP;
+        }
+
+        
+
+        if (savedDirection == directionToFloor) {
+            if (savedDirection == Const.DIRECTION_UP) {
+                score += sumScore(upArr, position, cmd.args[0]);
+                if (cmd.args[1] != Const.DIRECTION_UP) {
+                    score += sumScore(upArr, cmd.args[0], Integer.MAX_VALUE) + WRONG_DIRECTION;
+                }
+            } else if(savedDirection == Const.DIRECTION_DOWN){
+                score += sumScore(downArr, cmd.args[0], position);
+                if (cmd.args[1] != Const.DIRECTION_DOWN) {
+                    score += sumScore(downArr, 0, cmd.args[0]) + WRONG_DIRECTION;
+                }
+            }
+        } else {
+            if (savedDirection == Const.DIRECTION_UP) {
+                score += sumScore(downArr, 0, position);
+                score += sumScore(upArr, 0, cmd.args[0]);
+                if (cmd.args[1] != Const.DIRECTION_UP) {
+                    score += sumScore(upArr, cmd.args[0], Integer.MAX_VALUE) + WRONG_DIRECTION;
+                }
+            } else if(savedDirection == Const.DIRECTION_DOWN) {
+                score += sumScore(upArr, position, Integer.MAX_VALUE);
+                score += sumScore(downArr, cmd.args[0], Integer.MAX_VALUE);
+
+                if (cmd.args[1] != Const.DIRECTION_DOWN) {
+                    score += sumScore(downArr, 0, cmd.args[0]) + WRONG_DIRECTION ;
+                }
+            }
+        }
+        System.out.println("Elevator " + id + " has score " + score);
+        return score;
+    }
+   
 }
