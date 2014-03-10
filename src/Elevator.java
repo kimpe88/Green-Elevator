@@ -48,25 +48,27 @@ public class Elevator extends Thread {
 
     //TODO If button is pressed when halfway to a floor it gets added to other queue should incorporate half floors
     public void addToPath(int stop) {
+        float stopAsFloat = (float) stop;
         System.out.println("Adding stop to path " + stop + " currenct direction " + direction );
+        System.out.println("Adding stop to path " + " currenct direction " + direction );
         if (stop == Const.EMERGENCY_STOP) {
             System.out.println("EMERGENCY STOP PRESSED");
             Thread.currentThread().interrupt();
 
         } else if (direction == Const.DIRECTION_UP) {
-            if (floor.getCurrentFloorNumber() < stop) {
+            if (floor.getCurrentFloorNumberAsFloat()< stopAsFloat) {
                 add(pathUp,stop);
             } else {
                 add(pathDown,-stop);
             }
         } else if (direction == Const.DIRECTION_DOWN) {
-            if (floor.getCurrentFloorNumber() > stop) {
+            if (floor.getCurrentFloorNumberAsFloat() > stopAsFloat) {
                 add(pathDown,-stop);
             } else {
                 add(pathUp, stop);
             }
         } else {
-            if (floor.getCurrentFloorNumber() < stop) {
+            if (floor.getCurrentFloorNumberAsFloat() < stopAsFloat) {
                 direction = Const.DIRECTION_UP;
                 add(pathUp, stop);
             } else {

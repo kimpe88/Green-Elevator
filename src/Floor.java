@@ -19,6 +19,11 @@ public class Floor {
         return Math.round(position.get());
     }
     
+    public float getCurrentFloorNumberAsFloat(){
+        return position.get();
+    }
+
+    
     public boolean atFloor(int floorNumber) {
         if(Math.abs(position.get() - floorNumber) > 0.05)
             return false;
