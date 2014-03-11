@@ -268,34 +268,38 @@ public class Elevator extends Thread {
         if (downArr.length == 0 && upArr.length == 0) {
             score += Math.abs(position - cmd.args[0]);
         } else if (savedDirection == Const.DIRECTION_UP) {
-            if (savedDirection == directionToFloor) {
-                if (cmd.args[1] == upArr[upArr.length - 1].nextDirection) {
+            if (savedDirection == directionToFloor && upArr[upArr.length - 1].nextDirection != Const.NO_NEXT_DIRECTION) {
+                if (cmd.args[1] == upArr[upArr.length - 1].nextDirection ) {
                     score += Math.abs(upArr[upArr.length - 1].floor - cmd.args[0]) + (0.5 * upArr.length);
                 } else {
-                    score += Math.abs(position - cmd.args[0]);
+                    score += Math.abs(upArr[upArr.length - 1].floor- cmd.args[0]);
                     score += WRONG_DIRECTION;
                 }
-            } else {
+            } else if(upArr[upArr.length - 1].nextDirection != Const.NO_NEXT_DIRECTION) {
                 score += sumScore(downArr, cmd.args[0], position) * 0.5;
                 score += sumScore(upArr, position, upArr.length) * 0.5;
                 if (cmd.args[1] == Const.DIRECTION_UP) {
                     score += 1.5 * WRONG_DIRECTION;
                 }
+            } else {
+                score += Math.abs(upArr[upArr.length - 1].floor - cmd.args[0]) + (0.5 * upArr.length);
             }
         } else if (savedDirection == Const.DIRECTION_DOWN) {
-            if (savedDirection == directionToFloor) {
+            if (savedDirection == directionToFloor && downArr[downArr.length].nextDirection != Const.NO_NEXT_DIRECTION) {
                 if (cmd.args[1] == downArr[downArr.length - 1].nextDirection) {
                     score += Math.abs(downArr[downArr.length - 1].floor - cmd.args[0]) + (0.5 * downArr.length);
                 } else {
-                    score += Math.abs(position - cmd.args[0]);
+                    score += Math.abs(downArr[downArr.length - 1].floor- cmd.args[0]);
                     score += WRONG_DIRECTION;
                 }
-            } else {
+            } else if(downArr[downArr.length].nextDirection != Const.NO_NEXT_DIRECTION) {
                 score += sumScore(downArr, 0, position) * 0.5;
                 score += sumScore(upArr, position, cmd.args[0]) * 0.5;
                 if (cmd.args[1] == Const.DIRECTION_DOWN) {
                     score += 1.5 * WRONG_DIRECTION;
                 }
+            } else {
+                score += Math.abs(downArr[downArr.length - 1].floor - cmd.args[0]) + (0.5 * downArr.length);
             }
         }
 

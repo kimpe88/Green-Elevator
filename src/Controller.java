@@ -51,7 +51,8 @@ public class Controller {
             else
                 elevators[cmd.args[0]].setEmergencyStopped(true);
         } else{
-            Stop s = new Stop(cmd.args[0],cmd.args[1]);
+            System.out.println(cmd.toString());
+            Stop s = new Stop(cmd.args[1]);
             elevators[cmd.args[0]].addToPath(s);
         }
     }

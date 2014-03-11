@@ -89,5 +89,16 @@ public class Command {
                 break;
         }
     }
+    @Override
+    public String toString() {
+        StringBuilder sb= new StringBuilder();
+        sb.append(command.toString());
+        for(int i : args)
+            sb.append(i).append(" ");
+
+        sb.append(velocity).append(" ");
+        sb.append(position).append(" ");
+        return sb.toString();
+    }
 
 }
