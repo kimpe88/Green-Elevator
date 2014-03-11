@@ -251,58 +251,98 @@ public class Elevator extends Thread {
         float currFloorNumber = floor.getCurrentFloorNumberAsFloat();
         float score = 0;// Math.abs(currFloorNumber - (float) cmd.args[0]);
         System.out.println("Elevator " + id + " has command, to floor: " + cmd.args[0] + " ,direction: " + cmd.args[1]);
-      //  System.out.println("Elevator " + id + " has initial score " + score);
+        //  System.out.println("Elevator " + id + " has initial score " + score);
         Stop[] upArr = deepCopyQueue(pathUp);
         Stop[] downArr = deepCopyQueue(pathDown);
         int savedDirection = direction.get();
-
+        
         int directionToFloor;
         float position = floor.getCurrentFloorNumberAsFloat();
+
         if (position > cmd.args[0]) {
             directionToFloor = Const.DIRECTION_DOWN;
         } else {
             directionToFloor = Const.DIRECTION_UP;
         }
-
-        if (savedDirection == directionToFloor) {
-            if (savedDirection == Const.DIRECTION_UP) {
-                if (upArr.length != 0) {
+        System.out.println("Elevator " + id + " have direction " + savedDirection + " ,direction to floor " + directionToFloor);
+        if (downArr.length == 0 && upArr.length == 0) {
+            score += Math.abs(position - cmd.args[0]);
+        } else if (savedDirection == Const.DIRECTION_UP) {
+            if (savedDirection == directionToFloor) {
+                if (cmd.args[1] == upArr[upArr.length - 1].nextDirection) {
                     score += Math.abs(upArr[upArr.length - 1].floor - cmd.args[0]) + (0.5 * upArr.length);
-                    if (cmd.args[1] != Const.DIRECTION_UP) {
-                        score += WRONG_DIRECTION;
-                    }
                 } else {
                     score += Math.abs(position - cmd.args[0]);
+                    score += WRONG_DIRECTION;
                 }
-            } else if (savedDirection == Const.DIRECTION_DOWN) {
-                if (upArr.length != 0) {
-                    score += Math.abs(downArr[downArr.length - 1].floor - cmd.args[0]) + (0.5 * downArr.length);
-                    if (cmd.args[1] != Const.DIRECTION_DOWN) {
-                        score += WRONG_DIRECTION;
-                    }
-                } else {
-                    score += Math.abs(position - cmd.args[0]);
-                }
-            }
-        } else {
-            if(downArr.length == 0 && upArr.length == 0) {
-               score += Math.abs(position - cmd.args[0]);
-            }
-            else if (savedDirection == Const.DIRECTION_UP) {
+            } else {
                 score += sumScore(downArr, cmd.args[0], position) * 0.5;
                 score += sumScore(upArr, position, upArr.length) * 0.5;
                 if (cmd.args[1] == Const.DIRECTION_UP) {
+                    score += 1.5 * WRONG_DIRECTION;
+                }
+            }
+        } else if (savedDirection == Const.DIRECTION_DOWN) {
+            if (savedDirection == directionToFloor) {
+                if (cmd.args[1] == downArr[downArr.length - 1].nextDirection) {
+                    score += Math.abs(downArr[downArr.length - 1].floor - cmd.args[0]) + (0.5 * downArr.length);
+                } else {
+                    score += Math.abs(position - cmd.args[0]);
                     score += WRONG_DIRECTION;
                 }
-            } else if (savedDirection == Const.DIRECTION_DOWN) {
+            } else {
                 score += sumScore(downArr, 0, position) * 0.5;
                 score += sumScore(upArr, position, cmd.args[0]) * 0.5;
                 if (cmd.args[1] == Const.DIRECTION_DOWN) {
-                    score += WRONG_DIRECTION;
+                    score += 1.5 * WRONG_DIRECTION;
                 }
             }
         }
-        System.out.println("Elevator " + id + " has score " + score);
+
+//    if (savedDirection == directionToFloor
+//
+//    
+//        ) {
+//            if (savedDirection == Const.DIRECTION_UP) {
+//            if (upArr.length != 0) {
+//                score += Math.abs(upArr[upArr.length - 1].floor - cmd.args[0]) + (0.5 * upArr.length);
+//                if (cmd.args[1] != Const.DIRECTION_UP) {
+//                    score += WRONG_DIRECTION;
+//                }
+//            } else {
+//                score += Math.abs(position - cmd.args[0]);
+//            }
+//        } else if (savedDirection == Const.DIRECTION_DOWN) {
+//            if (upArr.length != 0) {
+//                score += Math.abs(downArr[downArr.length - 1].floor - cmd.args[0]) + (0.5 * downArr.length);
+//                if (cmd.args[1] != Const.DIRECTION_DOWN) {
+//                    score += WRONG_DIRECTION;
+//                }
+//            } else {
+//                score += Math.abs(position - cmd.args[0]);
+//            }
+//        }
+//    }
+//
+//    
+//        else {
+//            if (downArr.length == 0 && upArr.length == 0) {
+//            score += Math.abs(position - cmd.args[0]);
+//        } else if (savedDirection == Const.DIRECTION_UP) {
+//            score += sumScore(downArr, cmd.args[0], position) * 0.5;
+//            score += sumScore(upArr, position, upArr.length) * 0.5;
+//            if (cmd.args[1] == Const.DIRECTION_UP) {
+//                score += WRONG_DIRECTION;
+//            }
+//        } else if (savedDirection == Const.DIRECTION_DOWN) {
+//            score += sumScore(downArr, 0, position) * 0.5;
+//            score += sumScore(upArr, position, cmd.args[0]) * 0.5;
+//            if (cmd.args[1] == Const.DIRECTION_DOWN) {
+//                score += WRONG_DIRECTION;
+//            }
+//        }
+        System.out.println(
+                "Elevator " + id + " has score " + score);
         return score;
     }
 
