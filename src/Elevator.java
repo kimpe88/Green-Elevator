@@ -24,7 +24,7 @@ public class Elevator extends Thread {
     private boolean firstTimeCheckingEmergency = true, emergencyReset = false;
     private Communicator com;
     private AtomicInteger direction;
-    private static final int WRONG_DIRECTION = 2;
+    private static final int WRONG_DIRECTION = 3;
 
     public Elevator(int elevatorID, Communicator com) {
         this.id = elevatorID;
@@ -55,7 +55,7 @@ public class Elevator extends Thread {
     //TODO If button is pressed when halfway to a floor it gets added to other queue should incorporate half floors
     public void addToPath(int stop) {
         float stopAsFloat = (float) stop;
-        System.out.println("Adding stop to path " + stop + " currenct direction " + direction);
+        System.out.println("Elevator " + id + " adding stop " + stop + " to path,  currenct direction is " + direction.get());
         if (direction.get() == Const.DIRECTION_UP) {
             if (floor.getCurrentFloorNumberAsFloat() < stopAsFloat) {
                 add(pathUp, stop);
@@ -77,6 +77,7 @@ public class Elevator extends Thread {
                 add(pathDown, -stop);
             }
         }
+        System.out.println("Elevator " + id + " now has queue " + queueToString());
     }
 
     public int getDirection() {
@@ -103,8 +104,9 @@ public class Elevator extends Thread {
         Thread.sleep(1000);
         com.closeDoor(id);
         Thread.sleep(500);
-        if (pathUp.size() == 0 && pathDown.size() == 0)
+        if (pathUp.size() == 0 && pathDown.size() == 0) {
             direction.set(Const.DIRECTION_STOP);
+        }
     }
 
     private void calcAndSetDirection() {
@@ -202,12 +204,11 @@ public class Elevator extends Thread {
     }
 
     public float score(Command cmd) {
-        
+
         float currFloorNumber = floor.getCurrentFloorNumberAsFloat();
-        float score =  Math.abs( currFloorNumber- (float)cmd.args[0]);
+        float score = Math.abs(currFloorNumber - (float) cmd.args[0]);
         System.out.println("Elevator " + id + " has command, to floor: " + cmd.args[0] + " ,direction: " + cmd.args[1]);
         System.out.println("Elevator " + id + " has initial score " + score);
-        System.out.println("Elevator " + id + " has queue " + queueToString());
         int[] upArr = deepCopyQueue(pathUp);
         int[] downArr = deepCopyQueue(pathDown);
         int savedDirection = direction.get();
@@ -220,15 +221,13 @@ public class Elevator extends Thread {
             directionToFloor = Const.DIRECTION_UP;
         }
 
-        
-
         if (savedDirection == directionToFloor) {
             if (savedDirection == Const.DIRECTION_UP) {
                 score += sumScore(upArr, position, cmd.args[0]);
                 if (cmd.args[1] != Const.DIRECTION_UP) {
                     score += sumScore(upArr, cmd.args[0], Integer.MAX_VALUE) + WRONG_DIRECTION;
                 }
-            } else if(savedDirection == Const.DIRECTION_DOWN){
+            } else if (savedDirection == Const.DIRECTION_DOWN) {
                 score += sumScore(downArr, cmd.args[0], position);
                 if (cmd.args[1] != Const.DIRECTION_DOWN) {
                     score += sumScore(downArr, 0, cmd.args[0]) + WRONG_DIRECTION;
@@ -241,17 +240,77 @@ public class Elevator extends Thread {
                 if (cmd.args[1] != Const.DIRECTION_UP) {
                     score += sumScore(upArr, cmd.args[0], Integer.MAX_VALUE) + WRONG_DIRECTION;
                 }
-            } else if(savedDirection == Const.DIRECTION_DOWN) {
+            } else if (savedDirection == Const.DIRECTION_DOWN) {
                 score += sumScore(upArr, position, Integer.MAX_VALUE);
                 score += sumScore(downArr, cmd.args[0], Integer.MAX_VALUE);
 
                 if (cmd.args[1] != Const.DIRECTION_DOWN) {
-                    score += sumScore(downArr, 0, cmd.args[0]) + WRONG_DIRECTION ;
+                    score += sumScore(downArr, 0, cmd.args[0]) + WRONG_DIRECTION;
                 }
             }
         }
         System.out.println("Elevator " + id + " has score " + score);
         return score;
     }
-   
+
+    public float score2(Command cmd) {
+
+        float currFloorNumber = floor.getCurrentFloorNumberAsFloat();
+        float score = 0;// Math.abs(currFloorNumber - (float) cmd.args[0]);
+        System.out.println("Elevator " + id + " has command, to floor: " + cmd.args[0] + " ,direction: " + cmd.args[1]);
+      //  System.out.println("Elevator " + id + " has initial score " + score);
+        int[] upArr = deepCopyQueue(pathUp);
+        int[] downArr = deepCopyQueue(pathDown);
+        int savedDirection = direction.get();
+
+        int directionToFloor;
+        float position = floor.getCurrentFloorNumberAsFloat();
+        if (position > cmd.args[0]) {
+            directionToFloor = Const.DIRECTION_DOWN;
+        } else {
+            directionToFloor = Const.DIRECTION_UP;
+        }
+
+        if (savedDirection == directionToFloor) {
+            if (savedDirection == Const.DIRECTION_UP) {
+                if (upArr.length != 0) {
+                    score += Math.abs(upArr[upArr.length - 1] - cmd.args[0]) + (0.5 * upArr.length);
+                    if (cmd.args[1] != Const.DIRECTION_UP) {
+                        score += WRONG_DIRECTION;
+                    }
+                } else {
+                    score += Math.abs(position - cmd.args[0]);
+                }
+            } else if (savedDirection == Const.DIRECTION_DOWN) {
+                if (upArr.length != 0) {
+                    score += Math.abs(downArr[downArr.length - 1] - cmd.args[0]) + (0.5 * downArr.length);
+                    if (cmd.args[1] != Const.DIRECTION_DOWN) {
+                        score += WRONG_DIRECTION;
+                    }
+                } else {
+                    score += Math.abs(position - cmd.args[0]);
+                }
+            }
+        } else {
+            if(downArr.length == 0 && upArr.length == 0) {
+               score += Math.abs(position - cmd.args[0]);
+            }
+            else if (savedDirection == Const.DIRECTION_UP) {
+                score += sumScore(downArr, cmd.args[0], position) * 0.5;
+                score += sumScore(upArr, position, upArr.length) * 0.5;
+                if (cmd.args[1] == Const.DIRECTION_UP) {
+                    score += WRONG_DIRECTION;
+                }
+            } else if (savedDirection == Const.DIRECTION_DOWN) {
+                score += sumScore(downArr, 0, position) * 0.5;
+                score += sumScore(upArr, position, cmd.args[0]) * 0.5;
+                if (cmd.args[1] == Const.DIRECTION_DOWN) {
+                    score += WRONG_DIRECTION;
+                }
+            }
+        }
+        System.out.println("Elevator " + id + " has score " + score);
+        return score;
+    }
+
 }

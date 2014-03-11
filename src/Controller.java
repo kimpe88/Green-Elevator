@@ -58,7 +58,7 @@ public class Controller {
         int bestId=0;
         float curr;
         for (int i = 1; i < elevators.length; i++) {
-            curr = elevators[i].score(cmd);
+            curr = elevators[i].score2(cmd);
             if ( curr < bestScore) {
                 bestScore = curr;
                 bestId = i;
