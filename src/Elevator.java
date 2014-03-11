@@ -9,8 +9,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
+
 /**
- *
  * @author villiam
  */
 public class Elevator extends Thread {
@@ -132,7 +132,7 @@ public class Elevator extends Thread {
 
         while (true) {
             try {
-                while (pathUp.size() == 0 && pathDown.size() == 0);
+                while (pathUp.size() == 0 && pathDown.size() == 0) ;
                 if (currentPath.size() > 0) {
                     calcAndSetDirection();
                     com.move(id, direction.get());
@@ -255,7 +255,7 @@ public class Elevator extends Thread {
         Stop[] upArr = deepCopyQueue(pathUp);
         Stop[] downArr = deepCopyQueue(pathDown);
         int savedDirection = direction.get();
-        
+
         int directionToFloor;
         float position = floor.getCurrentFloorNumberAsFloat();
 
@@ -268,38 +268,34 @@ public class Elevator extends Thread {
         if (downArr.length == 0 && upArr.length == 0) {
             score += Math.abs(position - cmd.args[0]);
         } else if (savedDirection == Const.DIRECTION_UP) {
-            if (savedDirection == directionToFloor && upArr[upArr.length - 1].nextDirection != Const.NO_NEXT_DIRECTION) {
-                if (cmd.args[1] == upArr[upArr.length - 1].nextDirection ) {
+            if (savedDirection == directionToFloor) {
+                if (cmd.args[1] == upArr[upArr.length - 1].nextDirection || upArr[upArr.length - 1].nextDirection == Const.NO_NEXT_DIRECTION )  {
                     score += Math.abs(upArr[upArr.length - 1].floor - cmd.args[0]) + (0.5 * upArr.length);
                 } else {
-                    score += Math.abs(upArr[upArr.length - 1].floor- cmd.args[0]);
+                    score += Math.abs(upArr[upArr.length - 1].floor - cmd.args[0]);
                     score += WRONG_DIRECTION;
                 }
-            } else if(upArr[upArr.length - 1].nextDirection != Const.NO_NEXT_DIRECTION) {
+            } else {
                 score += sumScore(downArr, cmd.args[0], position) * 0.5;
                 score += sumScore(upArr, position, upArr.length) * 0.5;
                 if (cmd.args[1] == Const.DIRECTION_UP) {
                     score += 1.5 * WRONG_DIRECTION;
                 }
-            } else {
-                score += Math.abs(upArr[upArr.length - 1].floor - cmd.args[0]) + (0.5 * upArr.length);
             }
         } else if (savedDirection == Const.DIRECTION_DOWN) {
-            if (savedDirection == directionToFloor && downArr[downArr.length].nextDirection != Const.NO_NEXT_DIRECTION) {
-                if (cmd.args[1] == downArr[downArr.length - 1].nextDirection) {
+            if (savedDirection == directionToFloor) {
+                if (cmd.args[1] == downArr[downArr.length - 1].nextDirection || downArr[downArr.length - 1].nextDirection == Const.NO_NEXT_DIRECTION) {
                     score += Math.abs(downArr[downArr.length - 1].floor - cmd.args[0]) + (0.5 * downArr.length);
                 } else {
-                    score += Math.abs(downArr[downArr.length - 1].floor- cmd.args[0]);
+                    score += Math.abs(downArr[downArr.length - 1].floor - cmd.args[0]);
                     score += WRONG_DIRECTION;
                 }
-            } else if(downArr[downArr.length].nextDirection != Const.NO_NEXT_DIRECTION) {
+            } else {
                 score += sumScore(downArr, 0, position) * 0.5;
                 score += sumScore(upArr, position, cmd.args[0]) * 0.5;
                 if (cmd.args[1] == Const.DIRECTION_DOWN) {
                     score += 1.5 * WRONG_DIRECTION;
                 }
-            } else {
-                score += Math.abs(downArr[downArr.length - 1].floor - cmd.args[0]) + (0.5 * downArr.length);
             }
         }
 
