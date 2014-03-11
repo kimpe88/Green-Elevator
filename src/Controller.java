@@ -75,7 +75,7 @@ public class Controller {
     public static void main(String[] args) {
         String hostName = args.length > 0 ? args[0] : "localhost";
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 4711;
-        int numElevators = args.length > 2 ? Integer.parseInt(args[2]) : 2;
+        int numElevators = args.length > 2 ? Integer.parseInt(args[2]) : 1;
         numElevators++;
         Controller c = new Controller(new SSTAlgorithm());
         c.runElevator(hostName, port, numElevators);

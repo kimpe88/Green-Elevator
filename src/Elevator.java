@@ -24,7 +24,7 @@ public class Elevator extends Thread {
     private boolean firstTimeCheckingEmergency = true, emergencyReset = false;
     private Communicator com;
     private AtomicInteger direction;
-    private static final int WRONG_DIRECTION = 3;
+    private static final double WRONG_DIRECTION = 3.1;
 
     public Elevator(int elevatorID, Communicator com) {
         this.id = elevatorID;
@@ -276,8 +276,9 @@ public class Elevator extends Thread {
                     score += WRONG_DIRECTION;
                 }
             } else {
-                score += sumScore(downArr, cmd.args[0], position) * 0.5;
-                score += sumScore(upArr, position, upArr.length) * 0.5;
+                score += WRONG_DIRECTION;
+                score += sumScore(downArr, cmd.args[0], position) + (downArr.length * 0.5);
+                score += sumScore(upArr, position, upArr.length) + (upArr.length * 0.5);
                 if (cmd.args[1] == Const.DIRECTION_UP) {
                     score += 1.5 * WRONG_DIRECTION;
                 }
@@ -291,8 +292,9 @@ public class Elevator extends Thread {
                     score += WRONG_DIRECTION;
                 }
             } else {
-                score += sumScore(downArr, 0, position) * 0.5;
-                score += sumScore(upArr, position, cmd.args[0]) * 0.5;
+                score += WRONG_DIRECTION;
+                score += sumScore(downArr, 0, position) + (downArr.length * 0.5);
+                score += sumScore(upArr, position, cmd.args[0]) + (upArr.length * 0.5);
                 if (cmd.args[1] == Const.DIRECTION_DOWN) {
                     score += 1.5 * WRONG_DIRECTION;
                 }
