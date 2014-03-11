@@ -50,8 +50,10 @@ public class Controller {
                 elevators[cmd.args[0]].setEmergencyStopped(false);
             else
                 elevators[cmd.args[0]].setEmergencyStopped(true);
-        } else
-            elevators[cmd.args[0]].addToPath(cmd.args[1]);
+        } else{
+            Stop s = new Stop(cmd.args[0],cmd.args[1]);
+            elevators[cmd.args[0]].addToPath(s);
+        }
     }
     private void callElevatorButtonPressed(Command cmd) throws IOException {
         float bestScore = Integer.MAX_VALUE;
@@ -64,8 +66,8 @@ public class Controller {
                 bestId = i;
             }
         }
-        
-        elevators[bestId].addToPath(cmd.args[0]);
+        Stop s = new Stop(cmd.args[0],cmd.args[1]);
+        elevators[bestId].addToPath(s);
     }
 
 
