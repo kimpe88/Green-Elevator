@@ -34,4 +34,8 @@ public class Stop implements Comparable<Stop>{
     public Stop stopWithNegativeFloor() {
         return new Stop(-floor,nextDirection);
     }
+    @Override
+    public String toString() {
+        return floor + " " + nextDirection;
+    }
 }

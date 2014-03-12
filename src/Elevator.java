@@ -141,6 +141,7 @@ public class Elevator extends Thread {
                         if (oldFloor != currentFloor) {
                             com.setScale(id, currentFloor);
                         }
+                        Thread.yield();
                     } while (!floor.atFloor(getNextFloor()));
                     currentPath.remove();
                     stopAtFloor();
@@ -206,9 +207,7 @@ public class Elevator extends Thread {
             directionToFloor = Const.DIRECTION_UP;
         }
         System.out.println("Elevator " + id + " have direction " + savedDirection + " ,direction to floor " + directionToFloor);
-        if (downArr.length == 0 && upArr.length == 0) {
-            score += Math.abs(position - cmd.args[0]);
-        } else if (savedDirection == Const.DIRECTION_UP) {
+        if (savedDirection == Const.DIRECTION_UP && upArr.length > 0) {
             if (savedDirection == directionToFloor) {
                 if (cmd.args[1] == upArr[upArr.length - 1].nextDirection || upArr[upArr.length - 1].nextDirection == Const.NO_NEXT_DIRECTION )  {
                     score += Math.abs(upArr[upArr.length - 1].floor - cmd.args[0]) + (0.5 * upArr.length);
@@ -224,7 +223,7 @@ public class Elevator extends Thread {
                     score += 1.5 * WRONG_DIRECTION;
                 }
             }
-        } else if (savedDirection == Const.DIRECTION_DOWN) {
+        } else if (savedDirection == Const.DIRECTION_DOWN && downArr.length > 0) {
             if (savedDirection == directionToFloor) {
                 if (cmd.args[1] == downArr[downArr.length - 1].nextDirection || downArr[downArr.length - 1].nextDirection == Const.NO_NEXT_DIRECTION) {
                     score += Math.abs(downArr[downArr.length - 1].floor - cmd.args[0]) + (0.5 * downArr.length);
@@ -240,6 +239,8 @@ public class Elevator extends Thread {
                     score += 1.5 * WRONG_DIRECTION;
                 }
             }
+        } else {
+            score += Math.abs(position - cmd.args[0]);
         }
 
         System.out.println("Elevator " + id + " has score " + score);

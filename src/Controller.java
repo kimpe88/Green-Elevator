@@ -1,7 +1,6 @@
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -31,7 +30,6 @@ public class Controller {
             BufferedReader br = communicator.getBufferedReader();
             String msg;
             Command cmd;
-            System.out.println("Reader started");
             while ((msg = br.readLine()) != null) {
                 cmd = new Command(msg);
                 switch(cmd.command){
@@ -85,10 +83,11 @@ public class Controller {
     public static void main(String[] args) {
         String hostName = args.length > 0 ? args[0] : "localhost";
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 4711;
-        int numElevators = args.length > 2 ? Integer.parseInt(args[2]) : 1;
+        int numElevators = args.length > 2 ? Integer.parseInt(args[2]) : 5;
         numElevators++;
         Controller c = new Controller();
         c.runElevator(hostName, port, numElevators);
+        System.exit(0);
 
     }
 }
