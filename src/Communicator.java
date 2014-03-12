@@ -54,6 +54,10 @@ public class Communicator {
         pw.println(s);
         pw.flush();
     }
+    public synchronized void where(int elevatorId) {
+        pw.println("w " + elevatorId);
+        pw.flush();
+    }
 
     public void close() {
         try {

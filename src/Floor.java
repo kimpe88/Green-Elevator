@@ -23,12 +23,16 @@ public class Floor {
         return position.get();
     }
 
-    
-    public boolean atFloor(int floorNumber) {
-        if(Math.abs(position.get() - floorNumber) > 0.05)
-            return false;
-        else 
-            return true;
+
+    public int atFloor(int floorNumber) {
+        float diff = Math.abs(position.get() - floorNumber);
+
+        if(diff > 0.05 && diff < 0.09)
+            return 0;
+        else if ( diff < 0.05)
+            return  1;
+        else
+            return -1;
     }
     
 }

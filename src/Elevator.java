@@ -17,14 +17,12 @@ public class Elevator extends Thread {
     private Floor floor;
     private AtomicBoolean emergencyStopped;
     private Communicator com;
-    private AtomicInteger direction;
     private static final double WRONG_DIRECTION = 3.1;
 
     public Elevator(int elevatorID, Communicator com) {
         this.id = elevatorID;
         this.pathUp = new PriorityBlockingQueue<>();
         this.pathDown = new PriorityBlockingQueue<>();
-        this.direction = new AtomicInteger(Const.DIRECTION_STOP);
         this.currentPath = pathUp;
         this.com = com;
         this.floor = new Floor();
@@ -46,48 +44,28 @@ public class Elevator extends Thread {
         return sb.toString();
     }
 
-    public void addToPath(Stop stop) {
+    public synchronized void addToPath(Stop stop) {
         float stopAsFloat = (float) stop.floor;
-        System.out.println("Elevator " + id + " adding stop " + stop + " to path,  currenct direction is " + direction.get());
-        if (direction.get() == Const.DIRECTION_UP) {
-            if (floor.getCurrentFloorNumberAsFloat() < stopAsFloat) {
-                add(pathUp, stop);
-            } else {
-                add(pathDown, stop.stopWithNegativeFloor());
-            }
-        } else if (direction.get() == Const.DIRECTION_DOWN) {
-            if (floor.getCurrentFloorNumberAsFloat() > stopAsFloat) {
-                add(pathDown, stop.stopWithNegativeFloor());
-            } else {
-                add(pathUp, stop);
-            }
-        } else {
-            if (floor.getCurrentFloorNumberAsFloat() < stopAsFloat) {
-                direction.set(Const.DIRECTION_UP);
-                add(pathUp, stop);
-            } else {
-                direction.set(Const.DIRECTION_DOWN);
-                add(pathDown, stop.stopWithNegativeFloor());
-            }
-        }
-        System.out.println("Elevator " + id + " now has queue " + queueToString());
-    }
+        System.out.println("Elevator " + id + " adding stop " + stop + " to path,  currenct direction is " + getDirection());
 
-    public int getDirection() {
-        return direction.get();
+        if (floor.getCurrentFloorNumberAsFloat() < stopAsFloat) {
+            add(pathUp, stop);
+        } else {
+            add(pathDown, stop.stopWithNegativeFloor());
+        }
+
+        System.out.println("Elevator " + id + " now has queue " + queueToString());
     }
 
     public Floor getFloor() {
         return floor;
     }
 
-    private void switchDirectionPath() {
+    private synchronized void switchDirectionPath() {
         if (currentPath == pathUp) {
             currentPath = pathDown;
-            direction.set(Const.DIRECTION_DOWN);
         } else {
             currentPath = pathUp;
-            direction.set(Const.DIRECTION_UP);
         }
     }
 
@@ -97,42 +75,53 @@ public class Elevator extends Thread {
         Thread.sleep(1000);
         com.closeDoor(id);
         Thread.sleep(500);
-        if (pathUp.size() == 0 && pathDown.size() == 0) {
-            direction.set(Const.DIRECTION_STOP);
-        }
     }
 
-    private void calcAndSetDirection() {
-        int nextFloor = getNextFloor();
-        if (floor.getCurrentFloorNumber() < nextFloor) {
-            direction.set(Const.DIRECTION_UP);
-        } else {
-            direction.set(Const.DIRECTION_DOWN);
-        }
-        System.out.println("Direction " + direction);
+    private synchronized int getDirection() {
+        if (pathUp.size() == 0 && pathDown.size() == 0)
+            return Const.DIRECTION_STOP;
+        else if (currentPath == pathUp)
+            return Const.DIRECTION_UP;
+        else
+            return Const.DIRECTION_DOWN;
+
     }
 
-    private int getNextFloor() {
+    private synchronized int getNextFloor() {
         return Math.abs(currentPath.peek().floor);
+    }
+
+    // Just in case we just missed our destination
+    // If it was added just before elevator past floor
+    private synchronized void validateNextDestination() {
+        int dest = Math.abs(currentPath.peek().floor);
+        int direction = getDirection();
+        float current = floor.getCurrentFloorNumberAsFloat();
+        if (direction == Const.DIRECTION_UP && current >= dest)
+            addToPath(currentPath.poll());
+        else if (direction == Const.DIRECTION_DOWN && current <= dest)
+            addToPath(currentPath.peek());
     }
 
     @Override
     public void run() {
+        float diff;
         int currentFloor = 0, oldFloor = 0;
-
-        while (true) {
-            try {
-                while (pathUp.size() == 0 && pathDown.size() == 0)
+        int atFloor, outerCount = 0, sizeCount = 0, atFloorCount = 0, middleCount = 0;
+        try {
+            while (true) {
+                while (pathUp.size() == 0 && pathDown.size() == 0) {
                     Thread.yield();
+                }
                 if (currentPath.size() > 0) {
-                    calcAndSetDirection();
-                    com.move(id, direction.get());
+                    com.move(id, getDirection());
                     do {
+                        validateNextDestination();
                         synchronized (this) {
                             if (isEmergencyStopped()) {
                                 com.move(id, Const.DIRECTION_STOP);
                                 wait();
-                                com.move(id, direction.get());
+                                com.move(id, getDirection());
                             }
                         }
                         oldFloor = currentFloor;
@@ -141,16 +130,21 @@ public class Elevator extends Thread {
                         if (oldFloor != currentFloor) {
                             com.setScale(id, currentFloor);
                         }
-                        Thread.yield();
-                    } while (!floor.atFloor(getNextFloor()));
+                        //Thread.yield();
+                        diff = Math.abs(floor.getCurrentFloorNumberAsFloat() - getNextFloor());
+                        atFloorCount = (atFloorCount + 1) % 10000000;
+                        if (atFloorCount == 0)
+                            System.out.println(id + " atFloor 1000 " + floor.getCurrentFloorNumberAsFloat() + " size of queues " + pathUp.size() + " " + pathDown.size() + " diff " + diff + " " + queueToString() + " nextfloor " + getNextFloor() + " direction " + getDirection());
+                    } while (diff > 0.05);
                     currentPath.remove();
                     stopAtFloor();
                 } else {
                     switchDirectionPath();
                 }
-            } catch (InterruptedException e) {
-                System.out.println("Interrupted");
             }
+        } catch (InterruptedException e) {
+            System.out.println("Interrupted");
+            System.exit(0);
         }
 
     }
@@ -196,7 +190,7 @@ public class Elevator extends Thread {
         //  System.out.println("Elevator " + id + " has initial score " + score);
         Stop[] upArr = deepCopyQueue(pathUp);
         Stop[] downArr = deepCopyQueue(pathDown);
-        int savedDirection = direction.get();
+        int savedDirection = getDirection();
 
         int directionToFloor;
         float position = floor.getCurrentFloorNumberAsFloat();
@@ -209,7 +203,7 @@ public class Elevator extends Thread {
         System.out.println("Elevator " + id + " have direction " + savedDirection + " ,direction to floor " + directionToFloor);
         if (savedDirection == Const.DIRECTION_UP && upArr.length > 0) {
             if (savedDirection == directionToFloor) {
-                if (cmd.args[1] == upArr[upArr.length - 1].nextDirection || upArr[upArr.length - 1].nextDirection == Const.NO_NEXT_DIRECTION )  {
+                if (cmd.args[1] == upArr[upArr.length - 1].nextDirection || upArr[upArr.length - 1].nextDirection == Const.NO_NEXT_DIRECTION) {
                     score += Math.abs(upArr[upArr.length - 1].floor - cmd.args[0]) + (0.5 * upArr.length);
                 } else {
                     score += Math.abs(upArr[upArr.length - 1].floor - cmd.args[0]);
