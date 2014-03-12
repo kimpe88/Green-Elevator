@@ -54,5 +54,12 @@ public class Communicator {
         pw.println(s);
         pw.flush();
     }
-    
+
+    public void close() {
+        try {
+            s.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

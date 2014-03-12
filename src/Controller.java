@@ -16,15 +16,8 @@ import java.util.logging.Logger;
  */
 public class Controller {
 
-    private static ConcurrentLinkedQueue<ResponseObject> response = new ConcurrentLinkedQueue<ResponseObject>();
     private Elevator[] elevators;
-    private AlgorithmI alg;
     Communicator communicator;
-    
-    public Controller(AlgorithmI alg) {
-        this.alg = alg;
-        
-    }
 
     public void runElevator(String hostName, int port, int numElevators) {
         elevators = new Elevator[numElevators];
@@ -35,12 +28,29 @@ public class Controller {
                 elevators[i] = new Elevator(i, communicator);
                 elevators[i].start();
             }
-            Reader reader = new Reader(communicator);
-            reader.start();
-    
+            BufferedReader br = communicator.getBufferedReader();
+            String msg;
+            Command cmd;
+            System.out.println("Reader started");
+            while ((msg = br.readLine()) != null) {
+                cmd = new Command(msg);
+                switch(cmd.command){
+                    case f:
+                        elevators[cmd.args[0]].getFloor().setPosition(cmd.position);
+                        break;
+                    case b:
+                        callElevatorButtonPressed(cmd);
+                        break;
+                    case p:
+                        floorButtonPressed(cmd);
+                        break;
+                }
+            }
         } catch (IOException ex) {
             Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
-        } 
+        } finally {
+             communicator.close();
+        }
     }
 
     private void floorButtonPressed(Command cmd) {
@@ -61,7 +71,7 @@ public class Controller {
         int bestId=0;
         float curr;
         for (int i = 1; i < elevators.length; i++) {
-            curr = elevators[i].score2(cmd);
+            curr = elevators[i].score(cmd);
             if ( curr < bestScore) {
                 bestScore = curr;
                 bestId = i;
@@ -77,47 +87,8 @@ public class Controller {
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 4711;
         int numElevators = args.length > 2 ? Integer.parseInt(args[2]) : 1;
         numElevators++;
-        Controller c = new Controller(new SSTAlgorithm());
+        Controller c = new Controller();
         c.runElevator(hostName, port, numElevators);
-
-    }
-
-    private class Reader extends Thread {
-        
-        private Communicator communicator;
-
-        public Reader(Communicator c) {
-            this.communicator = c;
-        }
-
-        @Override
-        public void run() {
-            try {
-                BufferedReader br = communicator.getBufferedReader();
-                String msg;
-                Command cmd;
-                System.out.println("Reader started");
-                while ((msg = br.readLine()) != null) {
-                    cmd = new Command(msg);
-                    switch(cmd.command){
-                        case f:
-                            elevators[cmd.args[0]].getFloor().setPosition(cmd.position);
-                            break;
-                        case b:
-                            callElevatorButtonPressed(cmd);
-                            break;
-                        case p:
-                            floorButtonPressed(cmd);
-                            break;
-                    }
-                }
-                System.out.println("Reader finished");
-                
-            } catch (IOException ex) {
-                Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
-            }
-
-        }
 
     }
 }
