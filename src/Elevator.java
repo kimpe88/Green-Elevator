@@ -39,7 +39,7 @@ public class Elevator extends Thread {
     public void addToPath(Stop stop) {
         System.out.println("Elevator " + id + " adding stop " + stop + " to path,  currenct direction is " + getDirection() + " at floor " + floor.getCurrentFloorNumberAsFloat() + " now");
 
-        if (floor.getCurrentFloorNumber() < stop.floor) {
+        if (floor.getCurrentFloorNumberAsFloat() < stop.floor) {
             add(pathUp, stop);
         } else {
             add(pathDown, stop.stopWithNegativeFloor());
