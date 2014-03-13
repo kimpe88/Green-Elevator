@@ -44,28 +44,27 @@ public class Elevator extends Thread {
         return sb.toString();
     }
 
-    public synchronized void addToPath(Stop stop) {
-        float stopAsFloat = (float) stop.floor;
-        System.out.println("Elevator " + id + " adding stop " + stop + " to path,  currenct direction is " + getDirection());
+    public void addToPath(Stop stop) {
+        System.out.println("Elevator " + id + " adding stop " + stop + " to path,  currenct direction is " + getDirection() + " at floor " + floor.getCurrentFloorNumberAsFloat() + " now");
 
-        if (floor.getCurrentFloorNumberAsFloat() < stopAsFloat) {
+        if (floor.getCurrentFloorNumber() < stop.floor) {
             add(pathUp, stop);
         } else {
             add(pathDown, stop.stopWithNegativeFloor());
         }
-
-        System.out.println("Elevator " + id + " now has queue " + queueToString());
     }
 
     public Floor getFloor() {
         return floor;
     }
 
-    private synchronized void switchDirectionPath() {
-        if (currentPath == pathUp) {
-            currentPath = pathDown;
-        } else {
-            currentPath = pathUp;
+    private void switchDirectionPath() {
+        synchronized (currentPath) {
+            if (currentPath == pathUp) {
+                currentPath = pathDown;
+            } else {
+                currentPath = pathUp;
+            }
         }
     }
 
@@ -77,46 +76,68 @@ public class Elevator extends Thread {
         Thread.sleep(500);
     }
 
-    private synchronized int getDirection() {
-        if (pathUp.size() == 0 && pathDown.size() == 0)
-            return Const.DIRECTION_STOP;
-        else if (currentPath == pathUp)
-            return Const.DIRECTION_UP;
-        else
-            return Const.DIRECTION_DOWN;
-
+    private int getDirection() {
+        synchronized (currentPath) {
+            if (pathUp.size() == 0 && pathDown.size() == 0)
+                return Const.DIRECTION_STOP;
+            else if (currentPath == pathUp)
+                return Const.DIRECTION_UP;
+            else
+                return Const.DIRECTION_DOWN;
+        }
     }
 
-    private synchronized int getNextFloor() {
-        return Math.abs(currentPath.peek().floor);
+    private int getNextFloor(PriorityBlockingQueue<Stop> q) {
+        return Math.abs(q.peek().floor);
     }
 
-    // Just in case we just missed our destination
-    // If it was added just before elevator past floor
-    private synchronized void validateNextDestination() {
-        int dest = Math.abs(currentPath.peek().floor);
-        int direction = getDirection();
-        float current = floor.getCurrentFloorNumberAsFloat();
-        if (direction == Const.DIRECTION_UP && current >= dest)
-            addToPath(currentPath.poll());
-        else if (direction == Const.DIRECTION_DOWN && current <= dest)
-            addToPath(currentPath.peek());
+    private int atFloor(PriorityBlockingQueue<Stop> curr) {
+        int ret = 0;
+        synchronized (curr) {
+            if (curr.size() > 0) {
+                int direction = getDirection();
+                int next = getNextFloor(curr);
+                float currPosition = floor.getCurrentFloorNumberAsFloat();
+                // We somehow ended up with an invalid entry add it again
+                if (direction == Const.DIRECTION_DOWN && next > currPosition ) {
+                    add(pathUp,curr.poll());
+                    ret = -1;
+                    System.out.println("IN WRONG QUEUE MOVING");
+                } else if(direction == Const.DIRECTION_UP && next < currPosition){
+                    add(pathDown,curr.poll());
+                    ret = -1;
+                    System.out.println("IN WRONG QUEUE MOVING");
+                }else {
+                    if(Math.abs(currPosition - next) < 0.05)
+                        ret = 1;
+                    else
+                        ret = 0;
+                }
+            }
+        }
+
+        return ret;
     }
 
     @Override
     public void run() {
         float diff;
         int currentFloor = 0, oldFloor = 0;
-        int atFloor, outerCount = 0, sizeCount = 0, atFloorCount = 0, middleCount = 0;
+        int atFloor = 0, outerCount = 0, sizeCount = 0, atFloorCount = 0, middleCount = 0;
+        PriorityBlockingQueue<Stop> curr;
+
         try {
             while (true) {
                 while (pathUp.size() == 0 && pathDown.size() == 0) {
                     Thread.yield();
                 }
-                if (currentPath.size() > 0) {
+                synchronized (currentPath) {
+                    curr = currentPath;
+                }
+
+                if (curr.size() > 0) {
                     com.move(id, getDirection());
                     do {
-                        validateNextDestination();
                         synchronized (this) {
                             if (isEmergencyStopped()) {
                                 com.move(id, Const.DIRECTION_STOP);
@@ -131,13 +152,15 @@ public class Elevator extends Thread {
                             com.setScale(id, currentFloor);
                         }
                         //Thread.yield();
-                        diff = Math.abs(floor.getCurrentFloorNumberAsFloat() - getNextFloor());
+
                         atFloorCount = (atFloorCount + 1) % 10000000;
                         if (atFloorCount == 0)
-                            System.out.println(id + " atFloor 1000 " + floor.getCurrentFloorNumberAsFloat() + " size of queues " + pathUp.size() + " " + pathDown.size() + " diff " + diff + " " + queueToString() + " nextfloor " + getNextFloor() + " direction " + getDirection());
-                    } while (diff > 0.05);
-                    currentPath.remove();
-                    stopAtFloor();
+                            System.out.println(id + " atFloor 1000 " + floor.getCurrentFloorNumberAsFloat() + " size of queues " + pathUp.size() + " " + pathDown.size() + " " + " " + queueToString() + " nextfloor " + getNextFloor(curr) + " direction " + getDirection());
+                    } while (curr.size() > 0 && (atFloor = atFloor(curr)) == 0);
+                    if(atFloor == 1) {
+                        curr.remove();
+                        stopAtFloor();
+                    }
                 } else {
                     switchDirectionPath();
                 }
