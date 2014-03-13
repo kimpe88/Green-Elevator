@@ -2,7 +2,6 @@
 import java.util.Queue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -13,7 +12,9 @@ public class Elevator extends Thread {
     private int id;
     private PriorityBlockingQueue<Stop> pathUp;
     private PriorityBlockingQueue<Stop> pathDown;
-    private PriorityBlockingQueue<Stop> currentPath;
+    // This is volatile because both main thread has to be able to get an always up to date current reference for scoring
+    // and elevator thread switches it around between queues
+    private volatile PriorityBlockingQueue<Stop> currentPath;
     private Floor floor;
     private AtomicBoolean emergencyStopped;
     private Communicator com;
@@ -35,15 +36,6 @@ public class Elevator extends Thread {
         }
     }
 
-    private String queueToString() {
-        StringBuilder sb = new StringBuilder();
-        for (Stop s : currentPath) {
-            sb.append(s.floor).append(" ");
-        }
-        sb.append("\n");
-        return sb.toString();
-    }
-
     public void addToPath(Stop stop) {
         System.out.println("Elevator " + id + " adding stop " + stop + " to path,  currenct direction is " + getDirection() + " at floor " + floor.getCurrentFloorNumberAsFloat() + " now");
 
@@ -59,13 +51,11 @@ public class Elevator extends Thread {
     }
 
     private void switchDirectionPath() {
-        synchronized (currentPath) {
             if (currentPath == pathUp) {
                 currentPath = pathDown;
             } else {
                 currentPath = pathUp;
             }
-        }
     }
 
     private void stopAtFloor() throws InterruptedException {
@@ -77,36 +67,33 @@ public class Elevator extends Thread {
     }
 
     private int getDirection() {
-        synchronized (currentPath) {
             if (pathUp.size() == 0 && pathDown.size() == 0)
                 return Const.DIRECTION_STOP;
             else if (currentPath == pathUp)
                 return Const.DIRECTION_UP;
             else
                 return Const.DIRECTION_DOWN;
-        }
     }
 
     private int getNextFloor(PriorityBlockingQueue<Stop> q) {
         return Math.abs(q.peek().floor);
     }
 
-    private int atFloor(PriorityBlockingQueue<Stop> curr) {
+    private int atFloor() {
         int ret = 0;
-        synchronized (curr) {
-            if (curr.size() > 0) {
+            if (currentPath.size() > 0) {
                 int direction = getDirection();
-                int next = getNextFloor(curr);
+                int next = getNextFloor(currentPath);
                 float currPosition = floor.getCurrentFloorNumberAsFloat();
-                // We somehow ended up with an invalid entry add it again
+                // We somehow ended up with an invalid entry put it on other queue
                 if (direction == Const.DIRECTION_DOWN && next > currPosition ) {
-                    add(pathUp,curr.poll());
+                    add(pathUp, currentPath.poll());
                     ret = -1;
-                    System.out.println("IN WRONG QUEUE MOVING");
+                    System.out.println("Elevator " + id +" has entry in wrong queue, moving to other");
                 } else if(direction == Const.DIRECTION_UP && next < currPosition){
-                    add(pathDown,curr.poll());
+                    add(pathDown, currentPath.poll());
                     ret = -1;
-                    System.out.println("IN WRONG QUEUE MOVING");
+                    System.out.println("Elevator " + id +" has entry in wrong queue, moving to other");
                 }else {
                     if(Math.abs(currPosition - next) < 0.05)
                         ret = 1;
@@ -114,28 +101,20 @@ public class Elevator extends Thread {
                         ret = 0;
                 }
             }
-        }
-
         return ret;
     }
 
     @Override
     public void run() {
-        float diff;
         int currentFloor = 0, oldFloor = 0;
-        int atFloor = 0, outerCount = 0, sizeCount = 0, atFloorCount = 0, middleCount = 0;
-        PriorityBlockingQueue<Stop> curr;
-
+        int atFloor = 0;
         try {
             while (true) {
                 while (pathUp.size() == 0 && pathDown.size() == 0) {
                     Thread.yield();
                 }
-                synchronized (currentPath) {
-                    curr = currentPath;
-                }
 
-                if (curr.size() > 0) {
+                if (currentPath.size() > 0) {
                     com.move(id, getDirection());
                     do {
                         synchronized (this) {
@@ -151,14 +130,9 @@ public class Elevator extends Thread {
                         if (oldFloor != currentFloor) {
                             com.setScale(id, currentFloor);
                         }
-                        //Thread.yield();
-
-                        atFloorCount = (atFloorCount + 1) % 10000000;
-                        if (atFloorCount == 0)
-                            System.out.println(id + " atFloor 1000 " + floor.getCurrentFloorNumberAsFloat() + " size of queues " + pathUp.size() + " " + pathDown.size() + " " + " " + queueToString() + " nextfloor " + getNextFloor(curr) + " direction " + getDirection());
-                    } while (curr.size() > 0 && (atFloor = atFloor(curr)) == 0);
+                    } while (currentPath.size() > 0 && (atFloor = atFloor()) == 0);
                     if(atFloor == 1) {
-                        curr.remove();
+                        currentPath.remove();
                         stopAtFloor();
                     }
                 } else {
@@ -167,7 +141,6 @@ public class Elevator extends Thread {
             }
         } catch (InterruptedException e) {
             System.out.println("Interrupted");
-            System.exit(0);
         }
 
     }
@@ -200,19 +173,17 @@ public class Elevator extends Thread {
         return score;
     }
 
-    private static Stop[] deepCopyQueue(Queue<Stop> q) {
+    private static Stop[] copyQueueToArray(Queue<Stop> q) {
         return q.toArray(new Stop[q.size()]);
     }
 
 
     public float score(Command cmd) {
 
-        float currFloorNumber = floor.getCurrentFloorNumberAsFloat();
-        float score = 0;// Math.abs(currFloorNumber - (float) cmd.args[0]);
+        float score = 0;
         System.out.println("Elevator " + id + " has command, to floor: " + cmd.args[0] + " ,direction: " + cmd.args[1]);
-        //  System.out.println("Elevator " + id + " has initial score " + score);
-        Stop[] upArr = deepCopyQueue(pathUp);
-        Stop[] downArr = deepCopyQueue(pathDown);
+        Stop[] upArr = copyQueueToArray(pathUp);
+        Stop[] downArr = copyQueueToArray(pathDown);
         int savedDirection = getDirection();
 
         int directionToFloor;
@@ -223,7 +194,7 @@ public class Elevator extends Thread {
         } else {
             directionToFloor = Const.DIRECTION_UP;
         }
-        System.out.println("Elevator " + id + " have direction " + savedDirection + " ,direction to floor " + directionToFloor);
+        System.out.println("Elevator " + id + " has direction " + savedDirection + " ,direction to floor " + directionToFloor);
         if (savedDirection == Const.DIRECTION_UP && upArr.length > 0) {
             if (savedDirection == directionToFloor) {
                 if (cmd.args[1] == upArr[upArr.length - 1].nextDirection || upArr[upArr.length - 1].nextDirection == Const.NO_NEXT_DIRECTION) {
