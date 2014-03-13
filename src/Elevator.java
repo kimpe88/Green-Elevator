@@ -16,7 +16,7 @@ public class Elevator extends Thread {
     // and elevator thread switches it around between queues
     private volatile PriorityBlockingQueue<Stop> currentPath;
     private Floor floor;
-    private AtomicBoolean emergencyStopped;
+    private boolean emergencyStopped;
     private Communicator com;
     private static final double WRONG_DIRECTION = 3.1;
 
@@ -27,7 +27,7 @@ public class Elevator extends Thread {
         this.currentPath = pathUp;
         this.com = com;
         this.floor = new Floor();
-        this.emergencyStopped = new AtomicBoolean(false);
+        this.emergencyStopped = false;
     }
 
     private void add(Queue<Stop> q, Stop value) {
@@ -118,7 +118,7 @@ public class Elevator extends Thread {
                     com.move(id, getDirection());
                     do {
                         synchronized (this) {
-                            if (isEmergencyStopped()) {
+                            if (emergencyStopped) {
                                 com.move(id, Const.DIRECTION_STOP);
                                 wait();
                                 com.move(id, getDirection());
@@ -152,13 +152,10 @@ public class Elevator extends Thread {
         return id;
     }
 
-    public boolean isEmergencyStopped() {
-        return emergencyStopped.get();
-    }
 
-    public synchronized void setEmergencyStopped(boolean value) {
-        this.emergencyStopped.set(value);
-        if (value == false) {
+    public synchronized void changeEmergencyStopped() {
+        emergencyStopped = !emergencyStopped;
+        if (emergencyStopped == false) {
             notify();
         }
     }

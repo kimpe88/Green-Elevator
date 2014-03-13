@@ -53,11 +53,7 @@ public class Controller {
 
     private void floorButtonPressed(Command cmd) {
         if(cmd.command == Command.Commands.p && cmd.args[1] == 32000) {
-
-            if (elevators[cmd.args[0]].isEmergencyStopped())
-                elevators[cmd.args[0]].setEmergencyStopped(false);
-            else
-                elevators[cmd.args[0]].setEmergencyStopped(true);
+            elevators[cmd.args[0]].changeEmergencyStopped();
         } else{
             System.out.println(cmd.toString());
             Stop s = new Stop(cmd.args[1]);
