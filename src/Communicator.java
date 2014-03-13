@@ -27,7 +27,7 @@ public class Communicator {
         this.pw = new PrintWriter(s.getOutputStream());
     }
     
-    public synchronized BufferedReader getBufferedReader(){
+    public BufferedReader getBufferedReader(){
         return this.br;
     }
     public synchronized void move(int elevatorId, int direction){
