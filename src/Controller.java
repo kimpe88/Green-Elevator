@@ -51,6 +51,7 @@ public class Controller {
         }
     }
 
+    //If a button inside the elvator has been pushed, add that request to the queue
     private void floorButtonPressed(Command cmd) {
         if(cmd.command == Command.Commands.p && cmd.args[1] == 32000) {
             elevators[cmd.args[0]].changeEmergencyStopped();
@@ -60,6 +61,7 @@ public class Controller {
             elevators[cmd.args[0]].addToPath(s);
         }
     }
+    //Function that picks the best elevator for the request
     private void callElevatorButtonPressed(Command cmd) throws IOException {
         float bestScore = Integer.MAX_VALUE;
         int bestId=0;

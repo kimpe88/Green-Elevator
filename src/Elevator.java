@@ -49,7 +49,7 @@ public class Elevator extends Thread {
     public Floor getFloor() {
         return floor;
     }
-
+    //Switches the direction of the elevator
     private void switchDirectionPath() {
             if (currentPath == pathUp) {
                 currentPath = pathDown;
@@ -78,7 +78,7 @@ public class Elevator extends Thread {
     private int getNextFloor(PriorityBlockingQueue<Stop> q) {
         return Math.abs(q.peek().floor);
     }
-
+    //Check if we have reach a floor 
     private int atFloor() {
         int ret = 0;
             if (currentPath.size() > 0) {
@@ -152,14 +152,15 @@ public class Elevator extends Thread {
         return id;
     }
 
-
+    //Change when someone has pressed the stop button inside the elevator
     public synchronized void changeEmergencyStopped() {
         emergencyStopped = !emergencyStopped;
         if (emergencyStopped == false) {
             notify();
         }
     }
-
+    
+    //Uses in score function
     private int sumScore(Stop[] arr, float lowerLimit, float upperLimit) {
         int score = 0;
         for (int i = 0; i < arr.length; i++) {
@@ -174,7 +175,7 @@ public class Elevator extends Thread {
         return q.toArray(new Stop[q.size()]);
     }
 
-
+    //Score function, see PDF for details
     public float score(Command cmd) {
 
         float score = 0;
